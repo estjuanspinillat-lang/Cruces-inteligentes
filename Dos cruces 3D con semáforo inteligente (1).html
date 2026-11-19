@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dos cruces 3D con semáforo inteligente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eceee8;--panel:#f9faf6;--ink:#1b2227;--mute:#5a656d;--line:#d3d8cf;--acc:#0e7a6b;--on:#fff;--ground:#b8c9a4;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161a;--panel:#1a2025;--ink:#e6ebe8;--mute:#9aa6ad;--line:#2b343b;--acc:#3fc4ae;--on:#0b1a17;--ground:#24352a}}
+:root[data-theme="dark"]{--bg:#12161a;--panel:#1a2025;--ink:#e6ebe8;--mute:#9aa6ad;--line:#2b343b;--acc:#3fc4ae;--on:#0b1a17;--ground:#24352a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "Atkinson Hyperlegible",system-ui,sans-serif}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;max-width:1360px;margin:0 auto;padding:16px}
+@media(max-width:980px){.app{grid-template-columns:minmax(0,1fr)}}
+canvas{width:100%;max-width:900px;aspect-ratio:900/860;display:block;margin:0 auto;background:var(--ground);border-radius:10px;border:1px solid var(--line)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;align-self:start}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:18px 0 6px}
+h3{font-size:13px;margin:10px 0 2px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.sub{margin:0 0 14px;color:var(--mute)}
+button,select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer}
+button:hover{border-color:var(--acc)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.seg{display:flex;gap:6px;margin-bottom:10px}.seg button{flex:1}
+.seg button.on{background:var(--acc);color:var(--on);border-color:var(--acc);font-weight:700}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-bottom:10px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:6px}
+.stats div{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.stats b{display:block;font-size:22px}.stats span{color:var(--mute);font-size:13px}
+.stats .w{grid-column:1/-1}.stats .w span{color:var(--ink)}
+.ln{display:grid;grid-template-columns:70px 1fr 54px auto auto 30px;gap:6px;align-items:center;padding:3px 0}
+.ln input{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:linear-gradient(to right,#0feeee var(--p,20%),var(--line) var(--p,20%))}
+.ln input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#0feeee;border:2px solid var(--ink)}
+.ln input::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#0feeee;border:2px solid var(--ink)}
+.ln button{padding:3px 8px}.ln .r{font-size:13px;color:var(--mute);text-align:right}.ln .q{text-align:right;font-weight:700}
+.note{font-size:13px;color:var(--mute);margin:14px 0 0}
+.tabs{display:flex;gap:6px;max-width:1360px;margin:0 auto;padding:12px 16px 0}
+.tabs button.on{background:var(--acc);color:var(--on);border-color:var(--acc);font-weight:700}
+.res{max-width:920px;margin:0 auto;padding:16px}
+.mt{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:10px 0}
+.mt p{margin:6px 0 0;font-weight:700}
+.br{display:grid;grid-template-columns:110px 1fr 96px;gap:8px;align-items:center;margin-top:6px;font-size:14px}
+.bar{height:14px;background:var(--line);border-radius:7px;overflow:hidden}.bar i{display:block;height:100%;border-radius:7px}
+.br em{font-style:normal;text-align:right;font-weight:700}
+#bch{aspect-ratio:900/300;background:var(--panel);margin-top:12px}
+.rd h2{font-size:18px;margin:22px 0 6px}.rd p,.rd li{max-width:75ch}.rd li{margin:4px 0}.rd code{background:var(--line);padding:1px 5px;border-radius:4px}
+</style></head><body>
+<nav class="tabs"><button data-v="home" class="on">Inicio</button><button data-v="sim">Simulación</button><button data-v="res">Resultados</button></nav>
+<section id="vHome" class="res rd">
+<h1>Cruces inteligentes en 3D</h1>
+<p class="sub">Simulador de tráfico para comparar un semáforo controlado por una IA adaptativa contra un semáforo fijo de 15 segundos.</p>
+<h2>Qué es</h2>
+<p>Es una maqueta virtual de dos cruces conectados por una misma avenida. El cruce sur tiene 8 carriles de entrada (2 por cada lado: Norte, Sur, Este y Oeste). El cruce norte tiene un solo carril por sentido de Oeste a Este. La avenida Norte–Sur tiene dos carriles por sentido y sus cuatro carriles pasan por los dos semáforos.</p>
+<h2>Cómo usarlo</h2>
+<ul>
+<li><b>Simulación:</b> los carros aparecen al azar según el flujo de cada carril. Con los sliders eliges cuántos vehículos por minuto entran en cada uno, con <code>+1</code> y <code>+5</code> agregas carros a mano, y los escenarios cargan flujos típicos (hora pico, equilibrado, aleatorio). Puedes alternar entre IA adaptativa y semáforo fijo y cambiar la velocidad.</li>
+<li><b>Resultados:</b> compara los dos modos con la demanda que dejaste en los sliders. Elige duración y número de réplicas y pulsa Ejecutar comparación.</li>
+<li>Etiquetas del mapa: N1 y N2 son carriles que vienen del norte, S1 y S2 del sur, O1 y O2 del oeste, E1 y E2 del este; OB y EB son los carriles del cruce norte. Los carros solo avanzan derecho, sin giros.</li>
+</ul>
+<h2>Cómo funcionan los semáforos</h2>
+<p>Cada cruce tiene dos fases: Norte–Sur o Este–Oeste. Una fase pasa por verde, amarillo (3 s) y un instante con todo en rojo (1,5 s) antes de ceder el paso. La línea de alto de cada carril se pinta del color de su semáforo.</p>
+<ul>
+<li><b>Semáforo fijo:</b> alterna las fases cada 15 s, haya o no carros esperando.</li>
+<li><b>IA adaptativa:</b> sensores virtuales (la zona verde translucida de 220 px antes de cada línea de alto) cuentan los carros y su tiempo de espera. Cada fase recibe un puntaje: número de carros + 0,15 × suma de segundos de espera. Después de 5 s de verde, cambia si la otra fase tiene carros y la actual no, o si el puntaje de la otra supera 1,3 veces el de la actual más 1. Si las dos fases están muy cargadas (puntaje de ambas mayor a 20), espera al menos 20 s para no perder tiempo en cambios de luz. Nunca deja un verde más de 40 s si hay alguien esperando.</li>
+</ul>
+<p>Es un controlador adaptativo basado en reglas y sensores. No es una red neuronal ni aprende con los datos.</p>
+<h2>Cómo se calcula la comparación</h2>
+<ol>
+<li>Se simula cada modo sin dibujar, a 30 pasos por segundo, con los flujos actuales de los sliders.</li>
+<li>Se repite varias veces (réplicas). En cada réplica la IA y el semáforo fijo reciben exactamente los mismos carros aleatorios, así que cualquier diferencia viene del semáforo y no de la suerte.</li>
+<li>Los primeros 2 minutos se descartan, porque el mapa empieza vacío y esos datos no representan el tráfico normal.</li>
+<li>Se miden cuatro cosas. <b>Salida:</b> vehículos que completan el recorrido por minuto. <b>Espera media:</b> segundos que un vehículo pasa detenido antes de una línea de alto o esperando para entrar al mapa, promedio por vehículo (incluye a los que siguen en el mapa al terminar). <b>Cola promedio y máxima:</b> vehículos detenidos antes de una línea de alto más los que esperan para entrar, medidos cada segundo.</li>
+<li>El valor con ± es el intervalo de confianza del 95 % entre réplicas. La frase de mejora usa las diferencias por pares: solo se dice que hay diferencia significativa si la mejora promedio supera 1,96 errores estándar.</li>
+</ol>
+<p>Más duración y más réplicas dan resultados más estables, pero tardan más en calcularse.</p>
+<h2>Limitaciones</h2>
+<p>Es un modelo simplificado: sin giros, peatones ni accidentes, con distancias y velocidades en unidades de la maqueta. Los resultados dependen de la demanda. Con tráfico bajo la salida es igual en ambos modos (todos los carros pasan) y la diferencia está en la espera. Si la demanda supera la capacidad de los cruces (unos 300 vehículos por minuto en total), se forma cola sin importar el semáforo y ninguno puede evitarla.</p>
+</section>
+<div id="vSim" hidden><main class="app">
+<section><canvas id="c" width="900" height="860" role="img" aria-label="Simulación 3D de dos cruces"></canvas></section>
+<aside class="panel">
+<h1>Dos cruces en 3D</h1>
+<p class="sub">Cruce sur de 8 carriles y cruce norte de un carril por sentido. Cada uno tiene su semáforo y la IA los coordina por sensores.</p>
+<div class="seg" id="mode"><button data-m="ai" class="on">IA adaptativa</button><button data-m="fixed">Semáforo fijo (15 s)</button></div>
+<div class="row">
+<button id="run">Pausar</button>
+<label>Velocidad <select id="spd"><option>1</option><option selected>2</option><option>4</option><option>8</option></select>×</label>
+<label><input type="checkbox" id="rnd" checked> Tráfico aleatorio</label>
+</div>
+<div class="stats">
+<div><b id="s1">0</b><span>vehículos en cola</span></div>
+<div><b id="s2">0</b><span>espera media (s)</span></div>
+<div><b id="s3">0</b><span>salida (veh/min)</span></div>
+<div><b id="s6">0</b><span>vehículos en el mapa</span></div>
+<div class="w"><span id="s4"></span></div>
+</div>
+<h2>Flujo por carril (vehículos por minuto)</h2>
+<div id="lanes"></div>
+<h2>Escenarios</h2>
+<div class="row" id="pre">
+<button data-p="ns">Pico Norte–Sur</button><button data-p="eo">Pico Este–Oeste</button>
+<button data-p="eq">Equilibrado</button><button data-p="rd">Aleatorio</button><button data-p="z">Vaciar</button>
+</div>
+<p class="note">La avenida Norte–Sur tiene dos carriles por sentido y sus cuatro carriles pasan por los dos semáforos. El cruce norte tiene un solo carril por sentido de Oeste a Este.</p>
+</aside></main></div>
+<section id="vRes" class="res" hidden>
+<h1>Resultados: IA adaptativa vs semáforo fijo de 15 s</h1>
+<p class="sub">Se simulan los dos modos sin dibujar, con la misma demanda (los flujos actuales de los sliders) y los mismos carros aleatorios, para que la comparación sea justa. Cambia los sliders o un escenario en la pestaña Simulación y vuelve a ejecutar.</p>
+<div class="row"><label>Duración <select id="bd"><option value="600">10 min</option><option value="1200" selected>20 min</option><option value="1800">30 min</option></select></label><label>Réplicas <select id="bp"><option value="5">5 (rápido)</option><option value="10" selected>10 (recomendado)</option><option value="20">20 (alta precisión)</option></select></label><button id="bgo">Ejecutar comparación</button><span id="bst" class="sub"></span></div>
+<progress id="bpg" value="0" max="1" style="width:100%"></progress>
+<div id="bout"></div>
+<canvas id="bch" width="900" height="300" aria-label="Cola de vehículos en el tiempo"></canvas>
+</section>
+<script>
+const C=document.getElementById('c'),X=C.getContext('2d');
+const CL=18,VMAX=60,ACC=40,DEC=70,YEL=3,CLR=1.5,MING=5,MAXG=40,FIX=15;
+const COLS=[[201,80,63],[63,120,201],[224,169,58],[111,174,90],[140,107,196],[217,217,212],[74,167,160]];
+const A={phase:0,st:'green',t:0},Bi={phase:0,st:'green',t:0};
+const mk=(n,t,x,y,dx,dy,len,stops)=>({n,t,x,y,dx,dy,len,stops,cars:[],rate:12,pend:0});
+const lanes=[
+mk('Norte 1','N1',305,0,0,1,960,[{s:260,I:Bi,g:0},{s:580,I:A,g:0}]),
+mk('Norte 2','N2',335,0,0,1,960,[{s:260,I:Bi,g:0},{s:580,I:A,g:0}]),
+mk('Sur 1','S1',365,960,0,-1,960,[{s:260,I:A,g:0},{s:640,I:Bi,g:0}]),
+mk('Sur 2','S2',395,960,0,-1,960,[{s:260,I:A,g:0},{s:640,I:Bi,g:0}]),
+mk('Oeste 1','O1',0,655,1,0,700,[{s:290,I:A,g:1}]),
+mk('Oeste 2','O2',0,685,1,0,700,[{s:290,I:A,g:1}]),
+mk('Este 1','E1',700,625,-1,0,700,[{s:290,I:A,g:1}]),
+mk('Este 2','E2',700,595,-1,0,700,[{s:290,I:A,g:1}]),
+mk('Oeste B','OB',0,305,1,0,700,[{s:290,I:Bi,g:1}]),
+mk('Este B','EB',700,275,-1,0,700,[{s:290,I:Bi,g:1}])];
+const S={mode:'ai',speed:2,run:true,rand:true,time:0};
+let ex=[];
+const pos=(l,s)=>({x:l.x+l.dx*s,y:l.y+l.dy*s});
+const sig=t=>t.g!==t.I.phase?'red':t.I.st==='green'?'green':t.I.st==='yellow'?'yellow':'red';
+function score(I,g){let n=0,w=0;lanes.forEach(l=>l.stops.forEach(t=>{if(t.I===I&&t.g===g)l.cars.forEach(c=>{if(c.s>t.s-220&&c.s<t.s){n++;w+=c.w}})}));return n+w*.15}
+function ctrl(I,d){
+ I.t+=d;
+ if(I.st==='green'){
+  if(S.mode==='fixed'){if(I.t>=FIX){I.st='yellow';I.t=0}}
+  else if(I.t>=MING){
+   const a=score(I,I.phase),b=score(I,1-I.phase);if(I.t<(Math.min(a,b)>20?20:MING))return;
+   if((b>0&&a===0)||b>a*1.3+1||(I.t>=MAXG&&b>0)){I.st='yellow';I.t=0}
+  }
+ }else if(I.st==='yellow'&&I.t>=YEL){I.st='clear';I.t=0}
+ else if(I.st==='clear'&&I.t>=CLR){I.phase=1-I.phase;I.st='green';I.t=0}
+}
+function stepLane(l,d){
+ if(S.rand&&Math.random()<l.rate/60*d)l.pend++;
+ if(l.pend>60)l.pend=60;
+ const cs=l.cars,last=cs[cs.length-1];
+ if(l.pend>0&&(!last||last.s>CL+10)){l.pend--;cs.push({s:0,v:45,w:0,col:COLS[(Math.random()*COLS.length)|0]})}
+ const sg=l.stops.map(sig);
+ for(let i=0;i<cs.length;i++){
+  const c=cs[i];let gap=1e9;
+  if(i>0)gap=cs[i-1].s-CL-c.s-8;
+  l.stops.forEach((t,j)=>{
+   if(c.s<t.s-1&&sg[j]!=='green'){const dd=t.s-2-c.s;if(sg[j]==='red'||c.v*c.v/(2*DEC)<=dd)gap=Math.min(gap,dd)}
+  });
+  const vd=Math.min(VMAX,Math.sqrt(2*DEC*Math.max(gap,0)));
+  c.v=Math.max(0,c.v+Math.max(-DEC*1.5*d,Math.min(ACC*d,vd-c.v)));
+  c.s+=c.v*d;
+  if(i>0)c.s=Math.min(c.s,cs[i-1].s-CL-1);
+  if(c.v<4&&l.stops.some(t=>c.s<t.s))c.w+=d;
+ }
+ while(cs.length&&cs[0].s>l.len+30){const c=cs.shift();ex.push({t:S.time,w:c.w})}
+}
+function tick(d){S.time+=d;ctrl(A,d);ctrl(Bi,d);lanes.forEach(l=>stepLane(l,d))}
+
+/* cámara en perspectiva inclinada */
+const E=1,ce=Math.cos(E),se=Math.sin(E),D=1500,F=1400;
+function P(x,y,z){const ry=y-480-D*ce,rz=z-D*se,dep=-ry*ce-rz*se,yu=-ry*se+rz*ce,k=F/dep;return[450+(x-350)*k,380-yu*k,dep,k]}
+function fp(pts,fill){X.fillStyle=fill;X.beginPath();pts.forEach((p,i)=>{const q=P(p[0],p[1],p[2]||0);i?X.lineTo(q[0],q[1]):X.moveTo(q[0],q[1])});X.closePath();X.fill()}
+const R=(x0,y0,x1,y1,f)=>fp([[x0,y0],[x1,y0],[x1,y1],[x0,y1]],f);
+function ln(x0,y0,x1,y1,w,col){const a=P(x0,y0,0),b=P(x1,y1,0);X.strokeStyle=col;X.lineWidth=w*(a[3]+b[3])/2;X.beginPath();X.moveTo(a[0],a[1]);X.lineTo(b[0],b[1]);X.stroke()}
+const sh=(c,f)=>'rgb('+c.map(v=>Math.min(255,v*f|0))+')';
+function box(x0,x1,y0,y1,z0,z1,c){
+ fp([[x0,y1,z0],[x1,y1,z0],[x1,y1,z1],[x0,y1,z1]],sh(c,.8));
+ if(x1<=350)fp([[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1]],sh(c,.6));
+ else if(x0>=350)fp([[x0,y0,z0],[x0,y1,z0],[x0,y1,z1],[x0,y0,z1]],sh(c,.6));
+ fp([[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]],sh(c,1.08));
+}
+const ins=(r,s)=>s>0?[r[0]+5,r[1]-4]:s<0?[r[0]+4,r[1]-5]:[r[0]+1,r[1]-1];
+function car(l,c){
+ const p=pos(l,c.s),q={x:p.x-l.dx*CL,y:p.y-l.dy*CL};
+ const ax=l.dx?[Math.min(p.x,q.x),Math.max(p.x,q.x)]:[p.x-5.5,p.x+5.5];
+ const ay=l.dy?[Math.min(p.y,q.y),Math.max(p.y,q.y)]:[p.y-5.5,p.y+5.5];
+ box(ax[0],ax[1],ay[0],ay[1],1,6,c.col);
+ const cx=ins(ax,l.dx),cy=ins(ay,l.dy);
+ box(cx[0],cx[1],cy[0],cy[1],6,10,[40,50,62]);
+}
+const BLD=[[170,270,440,560,55,[150,160,175]],[430,540,450,570,40,[176,150,130]],[160,270,730,860,70,[140,150,165]],[440,560,730,850,45,[165,140,120]],
+[190,280,100,230,60,[130,145,160]],[420,510,110,230,45,[170,155,130]],[180,280,340,440,40,[160,150,150]],[420,520,350,440,65,[140,150,170]]];
+const YL=[[350,0,350,260],[350,320,350,580],[350,700,350,960],[0,640,290,640],[410,640,700,640],[0,290,290,290],[410,290,700,290]];
+const DL=[[320,0,320,260],[380,0,380,260],[320,320,320,580],[380,320,380,580],[320,700,320,960],[380,700,380,960],[0,610,290,610],[0,670,290,670],[410,610,700,610],[410,670,700,670]];
+const SC={green:'#3ddc84',yellow:'#ffc83d',red:'#ff5a4d'};
+let gc='#b8c9a4';
+function draw(){
+ X.fillStyle=gc;X.fillRect(0,0,900,860);
+ const road='#3a4048';
+ R(290,0,410,960,road);R(0,580,700,700,road);R(0,260,700,320,road);
+ X.lineCap='butt';
+ YL.forEach(a=>ln(a[0],a[1],a[2],a[3],2.5,'#d9b84a'));
+ X.setLineDash([8,8]);DL.forEach(a=>ln(a[0],a[1],a[2],a[3],1.8,'rgba(255,255,255,.4)'));X.setLineDash([]);
+ if(S.mode==='ai'){
+  lanes.forEach(l=>l.stops.forEach(t=>{
+   const a=pos(l,Math.max(0,t.s-220)),b=pos(l,t.s);
+   const f='rgba(63,196,174,.16)';
+   if(l.dx===0)R(l.x-14,Math.min(a.y,b.y),l.x+14,Math.max(a.y,b.y),f);else R(Math.min(a.x,b.x),l.y-14,Math.max(a.x,b.x),l.y+14,f);
+  }));
+ }
+ lanes.forEach(l=>l.stops.forEach(t=>{
+  const p=pos(l,t.s),col=SC[sig(t)];
+  X.shadowColor=col;X.shadowBlur=12;
+  if(l.dx===0)ln(l.x-14,p.y,l.x+14,p.y,5,col);else ln(p.x,l.y-14,p.x,l.y+14,5,col);
+  X.shadowBlur=0;
+ }));
+ X.fillStyle='rgba(255,255,255,.85)';X.textAlign='center';X.textBaseline='middle';
+ lanes.forEach(l=>{const p=pos(l,24),q=P(p.x,p.y,0);X.font='bold '+(14*q[3])+'px sans-serif';X.fillText(l.t,q[0],q[1])});
+ const it=[];
+ BLD.forEach(b=>it.push({d:P((b[0]+b[1])/2,(b[2]+b[3])/2,0)[2],f:()=>box(b[0],b[1],b[2],b[3],0,b[4],b[5])}));
+ lanes.forEach(l=>l.cars.forEach(c=>{const p=pos(l,c.s);it.push({d:P(p.x,p.y,0)[2],f:()=>car(l,c)})}));
+ it.sort((a,b)=>b.d-a.d);it.forEach(o=>o.f());
+}
+const LB=document.getElementById('lanes');
+lanes.forEach((l,i)=>{
+ if(i===0||i===8){const h=document.createElement('h3');h.textContent=i?'Cruce norte · 1 carril por sentido':'Cruce sur · 8 carriles';LB.appendChild(h)}
+ const d=document.createElement('div');d.className='ln';
+ d.innerHTML='<b>'+l.n+'</b><input type="range" min="0" max="60" value="12" aria-label="Flujo '+l.n+'"><span class="r">12/min</span><button aria-label="Agregar 1 carro en '+l.n+'">+1</button><button aria-label="Agregar 5 carros en '+l.n+'">+5</button><span class="q">0</span>';
+ const [,inp,r,b1,b5,q]=d.children;
+ l.inp=inp;l.r=r;l.q=q;
+ inp.oninput=()=>{l.rate=+inp.value;r.textContent=l.rate+'/min';inp.style.setProperty('--p',(inp.value/60*100)+'%')};
+ b1.onclick=()=>l.pend++;b5.onclick=()=>l.pend+=5;
+ LB.appendChild(d);
+});
+function setRates(f){lanes.forEach((l,i)=>{l.rate=f(l,i);l.inp.value=l.rate;l.r.textContent=l.rate+'/min';l.inp.style.setProperty('--p',(l.rate/60*100)+'%')})}
+const PRE={
+ ns:()=>setRates(l=>l.dx===0?38:6),eo:()=>setRates(l=>l.dx===0?6:38),eq:()=>setRates(()=>15),
+ rd:()=>setRates(()=>Math.floor(Math.random()*41)),
+ z:()=>{lanes.forEach(l=>{l.cars=[];l.pend=0});ex=[]}
+};
+document.getElementById('pre').onclick=e=>{const p=e.target.dataset.p;if(p)PRE[p]()};
+document.getElementById('mode').onclick=e=>{
+ const m=e.target.dataset.m;if(!m)return;
+ S.mode=m;A.t=0;Bi.t=0;ex=[];S.time=0;
+ [...e.currentTarget.children].forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+};
+const runB=document.getElementById('run');
+runB.onclick=()=>{S.run=!S.run;runB.textContent=S.run?'Pausar':'Reanudar'};
+document.getElementById('spd').onchange=e=>S.speed=+e.target.value;
+document.getElementById('rnd').onchange=e=>S.rand=e.target.checked;
+const $=id=>document.getElementById(id);
+const ph=I=>(I.phase===0?'Norte–Sur':'Este–Oeste')+' · '+({green:'verde',yellow:'amarillo',clear:'todo en rojo'})[I.st]+' '+I.t.toFixed(0)+' s';
+function upd(){
+ let tot=0,n=0;
+ lanes.forEach(l=>{const q=l.cars.filter(c=>c.v<4&&l.stops.some(t=>c.s<t.s)).length+l.pend;l.q.textContent=q;tot+=q;n+=l.cars.length});
+ ex=ex.filter(e=>e.t>S.time-90);
+ const w=ex.length?ex.reduce((a,e)=>a+e.w,0)/ex.length:0;
+ const th=ex.filter(e=>e.t>S.time-60).length*60/Math.max(10,Math.min(60,S.time));
+ $('s1').textContent=tot;$('s2').textContent=w.toFixed(1);$('s3').textContent=Math.round(th);$('s6').textContent=n;
+ $('s4').innerHTML='Cruce sur: '+ph(A)+'<br>Cruce norte: '+ph(Bi);
+ gc=getComputedStyle(document.documentElement).getPropertyValue('--ground').trim()||gc;
+}
+/* comparación sin dibujar, con semilla fija */
+function seeded(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function bench(mode,secs,seed){
+ const sv={c:lanes.map(l=>[l.cars,l.pend]),a:{...A},b:{...Bi},t:S.time,ex,m:S.mode,r:S.rand},rn=Math.random;
+ Math.random=seeded(seed);
+ lanes.forEach(l=>{l.cars=[];l.pend=0});Object.assign(A,{phase:0,st:'green',t:0});Object.assign(Bi,{phase:0,st:'green',t:0});
+ S.mode=mode;S.rand=true;S.time=0;ex=[];
+ let qs=0,qn=0,qmax=0,pw=0,pbs=0;const series=[];
+ for(let i=0;i<secs*30;i++){
+  tick(1/30);
+  if(i%30===0){let q=0;lanes.forEach(l=>{q+=l.cars.filter(c=>c.v<4&&l.stops.some(t=>c.s<t.s)).length+l.pend});if(i>=3600){qs+=q;qn++;qmax=Math.max(qmax,q);let pb=0;lanes.forEach(l=>{pb+=l.pend});pw+=pb;pbs+=pb}if(i%150===0)series.push(q)}
+ }
+ const ex2=ex.filter(e=>e.t>=120),ws=ex2.map(e=>e.w);lanes.forEach(l=>l.cars.forEach(c=>ws.push(c.w)));
+ const r={thr:ex2.length/((secs-120)/60),wait:(ws.reduce((a,b)=>a+b,0)+pw)/Math.max(1,ws.length+lanes.reduce((a,l)=>a+l.pend,0)),q:qs/qn,qmax,bl:pbs/qn,series};
+ Math.random=rn;
+ lanes.forEach((l,i)=>{l.cars=sv.c[i][0];l.pend=sv.c[i][1]});Object.assign(A,sv.a);Object.assign(Bi,sv.b);S.time=sv.t;ex=sv.ex;S.mode=sv.m;S.rand=sv.r;
+ return r;
+}
+function avg(rs){const o={raw:rs},n=rs.length;['thr','wait','q','qmax'].forEach(k=>{const m=rs.reduce((a,r)=>a+r[k],0)/n,sd=Math.sqrt(rs.reduce((a,r)=>a+(r[k]-m)**2,0)/Math.max(1,n-1));o[k]=m;o[k+'ci']=1.96*sd/Math.sqrt(n)});o.series=rs[0].series.map((_,i)=>rs.reduce((a,r)=>a+r.series[i],0)/n);return o}
+const MET=[['Salida (vehículos/min)','thr',1],['Espera media por vehículo (s)','wait',-1],['Cola promedio (vehículos)','q',-1],['Cola máxima (vehículos)','qmax',-1]];
+function chart(a,f,secs){
+ const c=$('bch'),g=c.getContext('2d'),cs=getComputedStyle(document.documentElement),V=n=>cs.getPropertyValue(n).trim();
+ g.clearRect(0,0,900,300);
+ const m=Math.max(1,...a,...f),L=44,T=34,Wd=840,H=220,n=a.length-1||1;
+ g.lineWidth=1;g.strokeStyle=V('--line');g.fillStyle=V('--mute');g.font='13px sans-serif';g.textAlign='right';
+ for(let i=0;i<=4;i++){const y=T+H-H*i/4;g.beginPath();g.moveTo(L,y);g.lineTo(L+Wd,y);g.stroke();g.fillText(Math.round(m*i/4),L-6,y+4)}
+ g.textAlign='left';g.fillText('0 min',L,T+H+18);g.textAlign='right';g.fillText((secs/60)+' min',L+Wd,T+H+18);
+ g.fillStyle=V('--ink');g.textAlign='left';g.fillText('Vehículos en cola en el tiempo',L,16);
+ const pl=(d,col)=>{g.strokeStyle=col;g.lineWidth=2.5;g.beginPath();d.forEach((v,i)=>{const x=L+Wd*i/n,y=T+H-H*v/m;i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke()};
+ pl(f,'#e08a3c');pl(a,V('--acc'));
+ g.textAlign='right';g.fillStyle=V('--acc');g.fillText('IA adaptativa',L+Wd-100,16);g.fillStyle='#e08a3c';g.fillText('Fijo 15 s',L+Wd,16);
+}
+function show(a,f,secs){
+ const bl=Math.max(...[a,f].map(z=>z.raw.reduce((p,r)=>p+r.bl,0)/z.raw.length));
+ $('bout').innerHTML=(bl>100?'<div class="mt"><p>Aviso: la demanda supera la capacidad de los cruces y se acumulan cientos de carros esperando para entrar. En esa saturación total ningún semáforo puede evitar la cola, así que las diferencias entre modos son pequeñas. Baja los flujos para una comparación más útil.</p></div>':'')+MET.map(([t,k,dir])=>{
+  const x=a[k],y=f[k],m=Math.max(x,y,.001),df=a.raw.map((r,i)=>dir*(r[k]-f.raw[i][k])),md=df.reduce((p,q)=>p+q,0)/df.length,se=Math.sqrt(df.reduce((p,q)=>p+(q-md)**2,0)/Math.max(1,df.length-1)/df.length),sig=Math.abs(md)>1.96*se&&se>0,d=y?md/y*100:0;
+  const txt=!sig?'Sin diferencia significativa entre los dos modos':(md>0?'La IA mejora ':'La IA empeora ')+Math.abs(d).toFixed(0)+' % (diferencia significativa)';
+  return '<div class="mt"><b>'+t+'</b><div class="br"><span>IA adaptativa</span><div class="bar"><i style="width:'+x/m*100+'%;background:var(--acc)"></i></div><em>'+x.toFixed(1)+' ±'+a[k+'ci'].toFixed(1)+'</em></div><div class="br"><span>Fijo 15 s</span><div class="bar"><i style="width:'+y/m*100+'%;background:#e08a3c"></i></div><em>'+y.toFixed(1)+' ±'+f[k+'ci'].toFixed(1)+'</em></div><p>'+txt+'</p></div>';
+ }).join('');
+ chart(a.series,f.series,secs);
+}
+$('bgo').onclick=()=>{
+ const secs=+$('bd').value,seeds=Array.from({length:+$('bp').value},(_,i)=>101+i*17),jobs=[],res={ai:[],fixed:[]};
+ seeds.forEach(s=>['ai','fixed'].forEach(m=>jobs.push([m,s])));
+ let k=0;$('bgo').disabled=true;
+ (function nxt(){
+  if(k<jobs.length){$('bst').textContent='Calculando simulación '+(k+1)+' de '+jobs.length+' ('+Math.round(k/jobs.length*100)+' %)…';$('bpg').max=jobs.length;$('bpg').value=k;
+   setTimeout(()=>{const [m,s]=jobs[k++];res[m].push(bench(m,secs,s));nxt()},30)}
+  else{$('bpg').value=jobs.length;show(avg(res.ai),avg(res.fixed),secs);$('bst').textContent='Listo: promedio de '+seeds.length+' réplicas por modo (sin los primeros 2 min de calentamiento), con '+lanes.reduce((a,l)=>a+l.rate,0)+' veh/min de demanda total.';$('bgo').disabled=false}
+ })();
+};
+document.querySelector('.tabs').onclick=e=>{
+ const v=e.target.dataset.v;if(!v)return;
+ $('vHome').hidden=v!=='home';$('vSim').hidden=v!=='sim';$('vRes').hidden=v!=='res';
+ [...e.currentTarget.children].forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+};
+let last=performance.now(),fc=0;
+function frame(now){
+ const el=Math.min(.1,(now-last)/1000);last=now;
+ const act=$('vSim').hidden===false;if(S.run&&act){let r=el*S.speed;while(r>0){const d=Math.min(r,1/30);tick(d);r-=d}}
+ if(act){draw();if(++fc%8===0)upd()}
+ requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></body></html>
